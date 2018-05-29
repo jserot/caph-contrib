@@ -1,0 +1,7 @@
+/HOWTO
+/README
+/CHANGES
+/CHANGES.html
+man/*.1
+man/*.tex
+*.o

@@ -1,0 +1,64 @@
+#!/bin/bash
+
+# A script for building Quartus projects from caph-generated VHDL code
+# Author : J. Sérot
+#
+# To build a Quartus-ready project 
+#
+# - add the directory containing this script to your PATH environment variable
+# - go to the directory containing the caph source code : cd <source_dir>
+# - edit the .proj file and add "-target_dir vhdl" to the VHDL_OPTS variable
+# - build the top level makefile : caphmake
+# - build the VHDL makefile : make vhdl.makefile
+# - build the VHDL code : make vhdl.code
+# - [Note : Alternatively, the previous steps can be carried out from the Caph GUI]
+# - go to the directory containing the generated VHDL code : cd ./vhdl
+# - invoke the script : mk_quartus_proj <topname> <target_dir>
+#     where
+#     <topname> is the name of the top level entity describing the dataflow network  ("xxx_net" typically)
+#     <target_dir> is the name of the directory where the Quartus project description  will be generated
+#
+
+contrib_dir=$CAPH/contrib # ***** Adjust this to reflect the location of your caph_contrib directory
+
+templs=$contrib_dir/platform/quartus/templates
+
+topname=main_net  # Default name for the top-level entity
+
+while : ; do
+  case "$1" in
+    "") break;;
+    -top|--top)
+        top=$2; shift;;
+    -help|--help)
+        cat <<EOF
+Usage: mk_quartus_proj [options] target_dir
+Options:
+  --top kind         toplevel entity [default: main_net]
+  --help             print this message
+
+EOF
+	exit 0;;
+    *) target_dir=$1;;
+  esac
+  shift
+done
+
+qip_name=$top.qip
+
+if [ ! -d $target_dir ]; then
+  echo "Creating dir $target_dir"
+  mkdir $target_dir
+fi
+
+sed -e "s/_MODULE_NAME_/$top/g" $templs/qsf_templ.qsf > $target_dir/$top.qsf
+sed -e "s/_MODULE_NAME_/$top/g" $templs/qpf_templ.qpf > $target_dir/$top.qpf
+cp $templs/sdc_templ.sdc $target_dir/$top.sdc
+echo "set module_files {" > $target_dir/$top.qip
+for f in *.vhd; do
+  echo $f >> $target_dir/$top.qip
+  echo "Copying $f to $target_dir"
+  cp $f $target_dir
+done
+echo "}" >> $target_dir/$top.qip
+sed -e "s/_MODULE_NAME_/$top/g" $templs/qip_templ.qip >> $target_dir/$top.qip
